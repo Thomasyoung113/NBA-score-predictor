@@ -57,9 +57,14 @@ async function getRedis() {
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return null;
-  const { Redis } = await import("@upstash/redis");
-  redisClient = new Redis({ url, token });
-  return redisClient;
+  try {
+    const { Redis } = await import("@upstash/redis");
+    redisClient = new Redis({ url, token });
+    return redisClient;
+  } catch (err) {
+    console.error("Redis init failed, falling back to in-memory store:", err);
+    return null;
+  }
 }
 
 // --- in-memory fallback (dev only) -----------------------------------

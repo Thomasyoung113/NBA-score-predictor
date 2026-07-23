@@ -1,20 +1,13 @@
-import GameCard, { type Game } from "@/components/GameCard";
+import GameCard from "@/components/GameCard";
 import AccuracyPanel from "@/components/AccuracyPanel";
 import { getAccuracyStats, getRecentForm } from "@/lib/store";
-
-async function getGames(): Promise<{ games: Game[]; source: string }> {
-  const base = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
-  const res = await fetch(`${base}/api/games`, { cache: "no-store" });
-  return res.json();
-}
+import { getGamesData } from "@/lib/games";
 
 export default async function Home() {
-  const [{ games, source }, accuracy, recentForm] = await Promise.all([
-    getGames(),
-    getAccuracyStats(),
-    getRecentForm(10),
+  const [{ games, source, error }, accuracy, recentForm] = await Promise.all([
+    getGamesData(),
+    getAccuracyStats().catch(() => ({ gamesEvaluated: 0, winnerAccuracy: 0, avgTotalError: 0, avgMarginError: 0 })),
+    getRecentForm(10).catch(() => [] as boolean[]),
   ]);
 
   return (
@@ -37,11 +30,20 @@ export default async function Home() {
             Showing sample data — add BALLDONTLIE_API_KEY in .env.local for live games
           </p>
         )}
+        {source === "error" && (
+          <p className="text-xs text-buzzer mt-4 border border-buzzer/40 inline-block px-3 py-1">
+            Couldn&apos;t load games right now{error ? `: ${error}` : ""}. Check your
+            BALLDONTLIE_API_KEY in Vercel&apos;s environment variables.
+          </p>
+        )}
       </header>
 
       <AccuracyPanel stats={accuracy} recentForm={recentForm} />
 
       <section className="space-y-4">
+        {games.length === 0 && source !== "error" && (
+          <p className="text-sm text-chalk/50">No upcoming games in the next few days.</p>
+        )}
         {games.map((g) => (
           <GameCard key={g.id} game={g} />
         ))}
